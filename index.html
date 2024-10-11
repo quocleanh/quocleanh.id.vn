@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -14,6 +15,7 @@
             font-family: Arial, sans-serif;
             background-color: #f4f4f9;
         }
+
         .container {
             display: flex;
             justify-content: space-between;
@@ -24,19 +26,24 @@
             background-color: white;
             min-height: 92vh;
         }
+
         .panel {
             width: 50%;
             padding: 20px;
             border-right: 1px solid #ddd;
             box-sizing: border-box;
         }
+
         .panel:last-child {
-            border-right: none; /* Không có viền bên phải cho panel cuối cùng */
+            border-right: none;
+            /* Không có viền bên phải cho panel cuối cùng */
         }
+
         h2 {
             margin-top: 0;
             color: #333;
         }
+
         textarea {
             width: 100%;
             min-height: 75vh;
@@ -48,17 +55,21 @@
             resize: none;
             box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
         }
+
         .tree {
             padding-left: 20px;
             line-height: 1.5;
         }
+
         .folder {
             cursor: pointer;
             color: blue;
         }
+
         .hidden {
             display: none;
         }
+
         #copyButton {
             margin-top: 10px;
             padding: 10px;
@@ -68,20 +79,35 @@
             border-radius: 4px;
             cursor: pointer;
         }
+
         #copyButton:hover {
             background-color: #0056b3;
         }
+
+        .note {
+            margin-top: 20px;
+            font-style: italic;
+            color: #555;
+        }
+
+        .status {
+            font-weight: bold;
+            margin-top: 10px;
+            color: #007bff;
+            /* Màu sắc cho trạng thái */
+        }
     </style>
-     <!-- Google tag (gtag.js) -->
-     <script async src="https://www.googletagmanager.com/gtag/js?id=G-E4MCLZB9LX"></script>
-     <script>
-       window.dataLayer = window.dataLayer || [];
-       function gtag(){dataLayer.push(arguments);}
-       gtag('js', new Date());
-     
-       gtag('config', 'G-E4MCLZB9LX');
-     </script>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-E4MCLZB9LX"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+
+        gtag('config', 'G-E4MCLZB9LX');
+    </script>
 </head>
+
 <body>
     <div class="container">
         <div class="panel">
@@ -93,6 +119,8 @@
             <h2>Formatted JSON Tree</h2>
             <div id="output" class="tree"></div>
             <button id="copyButton">Copy JSON</button>
+            <div class="note">1: Thêm, 2: Sửa, 3: Xóa, 7: Ghi sổ, 8: Bỏ ghi sổ</div>
+            <div id="modelStateStatus" class="status"></div>
         </div>
     </div>
 
@@ -100,6 +128,7 @@
         const inputArea = document.getElementById('input');
         const outputArea = document.getElementById('output');
         const copyButton = document.getElementById('copyButton');
+        const modelStateStatus = document.getElementById('modelStateStatus');
 
         inputArea.addEventListener('input', () => {
             const inputText = inputArea.value;
@@ -118,17 +147,52 @@
                     }
                 }
 
+                // Cập nhật trạng thái ModelState nếu có
+                updateModelState(mainJson);
+
                 // Tạo cây JSON
                 outputArea.innerHTML = '';
                 outputArea.appendChild(createTree(mainJson));
-                
+
                 // Cập nhật nút copy để sao chép JSON đã định dạng
                 copyButton.onclick = () => copyToClipboard(JSON.stringify(mainJson, null, 4));
             } catch (error) {
                 outputArea.textContent = 'Invalid JSON: ' + error.message; // Hiển thị lỗi nếu có
-                copyButton.onclick = () => {}; // Vô hiệu hóa nút copy nếu JSON không hợp lệ
+                modelStateStatus.textContent = ''; // Xóa trạng thái ModelState
+                copyButton.onclick = () => { }; // Vô hiệu hóa nút copy nếu JSON không hợp lệ
             }
         });
+
+        function updateModelState(json) {
+            if (json.custom_param && json.custom_param.ModelState) {
+                const modelState = json.custom_param.ModelState;
+                let statusMessage = '';
+
+                switch (modelState) {
+                    case '1':
+                        statusMessage = 'Trạng thái: Thêm';
+                        break;
+                    case '2':
+                        statusMessage = 'Trạng thái: Sửa';
+                        break;
+                    case '3':
+                        statusMessage = 'Trạng thái: Xóa';
+                        break;
+                    case '7':
+                        statusMessage = 'Trạng thái: Ghi sổ';
+                        break;
+                    case '8':
+                        statusMessage = 'Trạng thái: Bỏ ghi sổ';
+                        break;
+                    default:
+                        statusMessage = 'Trạng thái không xác định';
+                }
+
+                modelStateStatus.textContent = statusMessage; // Cập nhật trạng thái
+            } else {
+                modelStateStatus.textContent = 'Không có ModelState trong custom_param'; // Thông báo nếu không có
+            }
+        }
 
         function createTree(obj) {
             const ul = document.createElement('ul');
@@ -161,4 +225,5 @@
         }
     </script>
 </body>
+
 </html>
