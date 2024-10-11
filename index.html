@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON Formatter Tool</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            height: 100vh;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+        }
+        .container {
+            display: flex;
+            justify-content: space-between;
+            width: 80%;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            background-color: white;
+        }
+        .panel {
+            width: 50%;
+            padding: 20px;
+            border-right: 1px solid #ddd;
+            box-sizing: border-box;
+        }
+        .panel:last-child {
+            border-right: none; /* Không có viền bên phải cho panel cuối cùng */
+        }
+        h2 {
+            margin-top: 0;
+            color: #333;
+        }
+        textarea {
+            width: 100%;
+            height: 400px;
+            font-family: monospace;
+            padding: 10px;
+            font-size: 14px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            resize: none;
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        .tree {
+            padding-left: 20px;
+            line-height: 1.5;
+        }
+        .folder {
+            cursor: pointer;
+            color: blue;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="panel">
+            <h2>Input JSON</h2>
+            <textarea id="input" placeholder="Paste your JSON here..."></textarea>
+            <p>JSON Formatter Tool by <a href="https://quocleanh.id.vn/" target="_blank">Qắc Sunday</a></p>
+        </div>
+        <div class="panel">
+            <h2>Formatted JSON Tree</h2>
+            <div id="output" class="tree"></div>
+        </div>
+       
+    </div> 
+    <script>
+        const inputArea = document.getElementById('input');
+        const outputArea = document.getElementById('output');
+
+        inputArea.addEventListener('input', () => {
+            const inputText = inputArea.value;
+
+            try {
+                // Phân tích chuỗi JSON chính
+                const mainJson = JSON.parse(inputText);
+
+                // Kiểm tra và parse chuỗi JSON nhúng trong trường "data"
+                if (typeof mainJson.data === 'string') {
+                    try {
+                        mainJson.data = JSON.parse(mainJson.data);
+                    } catch (e) {
+                        // Nếu không thể parse, giữ nguyên
+                        mainJson.data = 'Invalid JSON in "data": ' + e.message;
+                    }
+                }
+
+                // Tạo cây JSON
+                outputArea.innerHTML = '';
+                outputArea.appendChild(createTree(mainJson));
+            } catch (error) {
+                outputArea.textContent = 'Invalid JSON: ' + error.message; // Hiển thị lỗi nếu có
+            }
+        });
+
+        function createTree(obj) {
+            const ul = document.createElement('ul');
+            for (const key in obj) {
+                const li = document.createElement('li');
+                if (typeof obj[key] === 'object' && obj[key] !== null) {
+                    li.textContent = key;
+                    li.className = 'folder';
+                    const childUl = createTree(obj[key]);
+                    li.appendChild(childUl);
+                    childUl.classList.add('hidden'); // Ẩn các node con
+                    li.addEventListener('click', function (e) {
+                        e.stopPropagation(); // Ngăn chặn sự kiện click tiếp tục
+                        childUl.classList.toggle('hidden'); // Hiện/ẩn node con
+                    });
+                } else {
+                    li.textContent = `${key}: ${obj[key]}`;
+                }
+                ul.appendChild(li);
+            }
+            return ul;
+        }
+    </script>
+</body>
+</html>
