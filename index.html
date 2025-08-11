@@ -78,6 +78,10 @@
     .dense .caret{width:18px;height:18px}
     .dense .ico svg{width:14px;height:14px}
 
+    /* Leaf: không hiển thị caret/icon, tạo khoảng đệm để căn hàng đẹp */
+    .node.leaf .caret, .node.leaf .ico{display:none}
+    .node.leaf .spacer{width:38px;flex:0 0 38px;height:1px}
+
     mark{background:#fff3bf;border-radius:4px;padding:0 2px}
 
     @media (max-width: 1024px){.app{grid-template-columns:1fr}}
@@ -137,11 +141,9 @@
     const searchInput = $('#search');
     const searchStatus = $('#searchStatus');
     const breadcrumb = $('#breadcrumb');
-    const viewerPanel = document.querySelector('.viewer');
 
     let currentJson = null;
     let expandState = new Set(); // JSONPath mở
-    let debTimer = null;
     let selectedNode = null; // DOM .node
 
     const debounce = (fn, ms=250)=>{let t;return (...args)=>{clearTimeout(t);t=setTimeout(()=>fn.apply(this,args),ms)}};
@@ -155,7 +157,6 @@
     // SVG icons
     const icoFolder = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7h6l2 2h10v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>';
     const icoArray = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="5" width="6" height="14" rx="2"/><rect x="14" y="5" width="6" height="14" rx="2"/></svg>';
-    const icoFile = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>';
 
     // ===== Tree Rendering =====
     function renderTree(container, obj){
@@ -178,12 +179,20 @@
       const isContainer = (t==='object' || t==='array');
 
       const row = document.createElement('div');
-      row.className = 'node'; row.dataset.path = path; row.dataset.type = t;
+      row.className = 'node' + (isContainer?'':' leaf');
+      row.dataset.path = path; row.dataset.type = t;
 
-      // Caret
-      const caret = document.createElement('span'); caret.className='caret'; caret.title='Mở/đóng';
-      // Icon
-      const ico = document.createElement('span'); ico.className='ico'; ico.innerHTML = isContainer ? (t==='array'?icoArray:icoFolder) : icoFile;
+      if (isContainer){
+        // Caret
+        const caret = document.createElement('span'); caret.className='caret'; caret.title='Mở/đóng';
+        // Icon
+        const ico = document.createElement('span'); ico.className='ico'; ico.innerHTML = (t==='array'?icoArray:icoFolder);
+        row.appendChild(caret);
+        row.appendChild(ico);
+      } else {
+        // Spacer để căn hàng đẹp, không hiển thị icon
+        const spacer = document.createElement('span'); spacer.className='spacer'; row.appendChild(spacer);
+      }
 
       // Label
       const label = document.createElement('span'); label.className='label';
@@ -202,17 +211,17 @@
         copy.appendChild(btn2);
       }
 
-      row.appendChild(caret); row.appendChild(ico); row.appendChild(label); row.appendChild(copy);
+      row.appendChild(label); row.appendChild(copy);
       li.appendChild(row);
 
       if (isContainer){
         const children = document.createElement('ul'); children.hidden = !expandState.has(path);
-        if(!children.hidden) caret.classList.add('open');
+        if(!children.hidden) row.querySelector('.caret').classList.add('open');
         let injected = false;
         function inject(){ if(injected) return; injected=true; if(t==='array'){ value.forEach((v,i)=> children.appendChild(makeNode(String(i), v, `${path}[${i}]`))); } else { Object.keys(value).forEach(k=> children.appendChild(makeNode(k, value[k], `${path}.${k}`))); } }
-        function toggle(){ const open = children.hidden; if(open){ inject(); children.hidden=false; caret.classList.add('open'); expandState.add(path);} else { children.hidden=true; caret.classList.remove('open'); expandState.delete(path);} }
-        caret.addEventListener('click',(e)=>{e.stopPropagation(); toggle(); selectRow(row)});
-        ico.addEventListener('click',(e)=>{e.stopPropagation(); toggle(); selectRow(row)});
+        function toggle(){ const open = children.hidden; if(open){ inject(); children.hidden=false; row.querySelector('.caret').classList.add('open'); expandState.add(path);} else { children.hidden=true; row.querySelector('.caret').classList.remove('open'); expandState.delete(path);} }
+        row.querySelector('.caret').addEventListener('click',(e)=>{e.stopPropagation(); toggle(); selectRow(row)});
+        row.addEventListener('dblclick',(e)=>{ if(e.target.closest('.copy')) return; toggle(); selectRow(row); });
         label.addEventListener('click',(e)=>{e.stopPropagation(); toggle(); selectRow(row)});
         li.appendChild(children);
       } else {
@@ -232,16 +241,14 @@
     function updateBreadcrumb(path){
       const parts = [];
       let p = path || '$';
-      // split $.a.b[0].c to segments
       const regex = /\$|\.[^\.\[]+|\[[0-9]+\]/g; const segs = p.match(regex)||['$'];
       let acc = '';
-      segs.forEach((s,i)=>{ acc += (i===0? s : s.startsWith('[')? s : s); const full = acc; parts.push(`<a data-path="${full}">${s}</a>`); });
+      segs.forEach((s,i)=>{ acc += (i===0? s : s); const full = acc; parts.push(`<a data-path="${full}">${s}</a>`); });
       breadcrumb.innerHTML = parts.join('<span class="sep"> › </span>');
       $$('a', breadcrumb).forEach(a=> a.addEventListener('click',()=> jumpToPath(a.dataset.path)) );
     }
 
     function jumpToPath(path){
-      // expand ancestors
       const ancestors = [];
       let cur = path; while(cur && cur !== '$'){ ancestors.push(cur); cur = cur.replace(/(\.[^\.\[]+|\[[0-9]+\])$/,'') || '$'; }
       ancestors.reverse(); ancestors.forEach(p=> expandState.add(p));
@@ -256,9 +263,10 @@
       else if(e.key==='ArrowLeft'){ const children=li.querySelector('ul'); const caret=row.querySelector('.caret'); if(children && !children.hidden){ caret.click(); } else { const parentLi = li.parentElement.closest('li'); if(parentLi){ parentLi.querySelector('.node').focus(); } } }
     }
 
-    function nextRow(li){ // depth-first next
+    function nextRow(li){
       if(li.querySelector('ul') && !li.querySelector('ul').hidden){ const first = li.querySelector('ul > li'); if(first) return first; }
-      let n = li.nextElementSibling; if(n) return n; let parent = li.parentElement.closest('li'); while(parent){ if(parent.nextElementSibling) return parent.nextElementSibling; parent = parent.parentElement.closest('li'); } return null; }
+      let n = li.nextElementSibling; if(n) return n; let parent = li.parentElement.closest('li'); while(parent){ if(parent.nextElementSibling) return parent.nextElementSibling; parent = parent.parentElement.closest('li'); } return null;
+    }
     function prevRow(li){ let p = li.previousElementSibling; if(!p){ return li.parentElement.closest('li'); } while(p.querySelector('ul') && !p.querySelector('ul').hidden){ const last = Array.from(p.querySelectorAll(':scope > ul > li')).pop(); if(!last) break; p = last; } return p; }
 
     document.addEventListener('keydown', (e)=>{
@@ -287,12 +295,11 @@
     // Search
     let searchHits = []; let hitIndex = -1;
     function doSearch(q){ q=(q||'').trim().toLowerCase(); $$('mark', treeWrap).forEach(m=>{const t=m.textContent; m.replaceWith(document.createTextNode(t));}); searchStatus.textContent=''; searchHits=[]; hitIndex=-1; if(!q) return;
-      // Expand match paths
       const matchPaths=[];
       function collect(v, p){ if(typeof v==='object' && v!==null){ if(Array.isArray(v)) v.forEach((it,i)=>collect(it, `${p}[${i}]`)); else Object.entries(v).forEach(([k,val])=>{ if(String(k).toLowerCase().includes(q)) matchPaths.push(p); if(typeof val!=='object'||val===null){ if(String(val).toLowerCase().includes(q)) matchPaths.push(p); } collect(val, `${p}.${k}`); }); } }
       collect(currentJson,'$'); matchPaths.forEach(p=>expandState.add(p)); renderTree(treeWrap, currentJson);
       // highlight
-      const walker=document.createTreeWalker(treeWrap, NodeFilter.SHOW_TEXT, null); const re = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'gi');
+      const walker=document.createTreeWalker(treeWrap, NodeFilter.SHOW_TEXT, null); const re=new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'gi');
       while(walker.nextNode()){ const node=walker.currentNode; if(!node.nodeValue.trim()) continue; if(re.test(node.nodeValue)){ const span=document.createElement('span'); span.innerHTML=node.nodeValue.replace(re,m=>`<mark>${m}</mark>`); node.parentNode.replaceChild(span,node); } }
       searchHits = $$('.node mark', treeWrap).map(m=>m.closest('.node'));
       if(searchHits.length){ hitIndex=0; focusHit(); }
