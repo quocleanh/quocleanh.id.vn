@@ -3,17 +3,17 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>JSON Viewer Pro – Dễ click, dễ mở node</title>
+  <title>JSON Viewer Pro – Dạng cây (Tree View) tối ưu</title>
   <style>
     :root{
-      --bg:#f6f7fb; --card:#fff; --border:#e5e7eb; --text:#111827; --muted:#6b7280; --primary:#2563eb;
-      --accent:#eef2ff; --hover:#f3f4f6; --success:#059669; --warning:#d97706; --danger:#dc2626;
+      --bg:#f6f7fb; --card:#fff; --border:#e5e7eb; --text:#0f172a; --muted:#64748b; --primary:#2563eb;
+      --accent:#eef2ff; --hover:#f8fafc; --line:#e2e8f0; --icon:#475569;
       --mono: ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;
     }
     *{box-sizing:border-box}
     html,body{height:100%}
-    body{margin:0;background:var(--bg);font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial,"Apple Color Emoji","Segoe UI Emoji";color:var(--text)}
-    .app{display:grid;grid-template-columns:1fr 1fr;gap:16px;padding:16px;height:100%;}
+    body{margin:0;background:var(--bg);font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial;color:var(--text)}
+    .app{display:grid;grid-template-columns:1fr 1fr;gap:16px;padding:16px;height:100%}
 
     .panel{background:var(--card);border:1px solid var(--border);border-radius:14px;display:flex;flex-direction:column;min-height:0}
     .panel header{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--border)}
@@ -23,13 +23,9 @@
     .footer-note{padding:10px 14px;border-top:1px solid var(--border);font-size:12px;color:var(--muted)}
 
     .toolbar{display:flex;gap:8px;flex-wrap:wrap}
-    .btn{appearance:none;border:1px solid var(--border);background:#fff;border-radius:10px;padding:8px 10px;font-size:12px;cursor:pointer;display:flex;gap:6px;align-items:center}
+    .btn{appearance:none;border:1px solid var(--border);background:#fff;border-radius:10px;padding:8px 10px;font-size:12px;cursor:pointer;display:inline-flex;gap:6px;align-items:center}
     .btn:hover{background:var(--hover)}
     .btn.primary{border-color:transparent;background:var(--primary);color:#fff}
-    .btn.badge{padding:4px 8px;border-radius:999px;font-weight:600}
-
-    .status{font-size:12px;color:var(--muted)}
-    .status strong{color:var(--text)}
 
     .viewer{position:relative;display:flex;flex-direction:column;min-height:0}
     .controls{position:sticky;top:0;background:var(--card);z-index:5;border-bottom:1px solid var(--border)}
@@ -38,17 +34,32 @@
     .search{flex:1;display:flex;align-items:center;gap:8px;padding:6px 10px;border:1px solid var(--border);border-radius:10px}
     .search input{border:0;outline:none;flex:1;font-size:13px;background:transparent}
 
-    .tree{padding:8px 10px 16px 10px;overflow:auto;flex:1}
-    ul{list-style:none;margin:0;padding-left:16px;border-left:1px dashed #e5e7eb}
+    /* ===== Tree UI ===== */
+    .tree{display:flex;flex-direction:column;min-height:0;overflow:auto}
+    .breadcrumb{position:sticky;top:48px;background:var(--card);z-index:4;border-bottom:1px dashed var(--line);padding:8px 12px;font-size:12px;color:var(--muted);display:flex;gap:6px;align-items:center}
+    .breadcrumb a{color:var(--primary);text-decoration:none;cursor:pointer}
+    .breadcrumb .sep{opacity:.5}
 
-    .node{display:flex;align-items:flex-start;gap:6px;line-height:1.7;padding:2px 6px;border-radius:8px;position:relative}
+    .tree-wrap{padding:8px 10px 16px 6px}
+
+    .tree ul{list-style:none;margin:0;padding:0 0 0 24px;position:relative}
+    .tree ul::before{content:"";position:absolute;left:10px;top:0;bottom:0;border-left:1px dashed var(--line)}
+
+    .tree li{position:relative}
+    .tree li::before{content:"";position:absolute;left:10px;top:16px;width:16px;border-top:1px dashed var(--line)}
+
+    .node{display:flex;align-items:flex-start;gap:8px;line-height:1.7;padding:3px 6px;border-radius:8px;position:relative}
     .node:hover{background:var(--hover)}
+    .node.selected{outline:2px solid var(--primary);background:#fff}
 
-    .caret{width:18px;height:18px;border:1px solid var(--border);border-radius:6px;display:inline-flex;align-items:center;justify-content:center;font-size:10px;user-select:none;cursor:pointer;background:#fff;flex:0 0 18px;margin-top:3px}
+    .caret{width:20px;height:20px;border:1px solid var(--border);border-radius:6px;display:inline-flex;align-items:center;justify-content:center;font-size:10px;user-select:none;cursor:pointer;background:#fff;flex:0 0 20px;margin-top:2px}
     .caret::before{content:"▶";transform-origin:center;transition:transform .16s ease}
     .caret.open::before{transform:rotate(90deg)}
 
-    .label{cursor:pointer;user-select:text}
+    .ico{width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;color:var(--icon);margin-top:3px}
+    .ico svg{width:16px;height:16px}
+
+    .label{cursor:pointer;user-select:text;flex:1}
     .key{font-weight:600}
     .meta{font-size:11px;color:var(--muted);margin-left:6px}
     .type{font-size:10px;background:var(--accent);border:1px solid #c7d2fe;border-radius:999px;padding:2px 6px;margin-left:8px}
@@ -62,11 +73,14 @@
     .copy{margin-left:auto}
     .copy .btn{padding:4px 8px}
 
+    .density{margin-left:4px}
+    .dense .node{padding:1px 4px}
+    .dense .caret{width:18px;height:18px}
+    .dense .ico svg{width:14px;height:14px}
+
     mark{background:#fff3bf;border-radius:4px;padding:0 2px}
 
-    @media (max-width: 1024px){
-      .app{grid-template-columns:1fr}
-    }
+    @media (max-width: 1024px){.app{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
@@ -81,7 +95,7 @@
         </div>
       </header>
       <textarea id="input" placeholder="Dán JSON vào đây hoặc gõ vào…"></textarea>
-      <div class="footer-note">JSON Formatter by Qắc Sunday • Phím tắt: <strong>A</strong> mở tất cả, <strong>Z</strong> đóng tất cả, <strong>F</strong> tìm kiếm.</div>
+      <div class="footer-note">Phím tắt: <strong>A</strong> mở tất cả, <strong>Z</strong> đóng tất cả, <strong>↑/↓</strong> chọn node, <strong>→/←</strong> mở/đóng node, <strong>F</strong> tìm kiếm.</div>
     </section>
 
     <section class="panel viewer">
@@ -94,6 +108,7 @@
             <label class="btn" style="gap:6px">Mở tới cấp
               <input id="level" type="number" min="1" value="2" style="width:56px;border:1px solid var(--border);border-radius:8px;padding:4px 6px"/>
             </label>
+            <label class="btn density"><input id="toggleDense" type="checkbox"> Dạng cô đặc</label>
           </div>
           <div class="search" title="Tìm theo key hoặc value (không phân biệt hoa thường)">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21 21l-4.35-4.35" stroke="#6b7280" stroke-width="2" stroke-linecap="round"/><circle cx="10.5" cy="10.5" r="7" stroke="#6b7280" stroke-width="2"/></svg>
@@ -102,292 +117,207 @@
           </div>
         </div>
       </header>
+
+      <div class="breadcrumb" id="breadcrumb" aria-label="Đường dẫn"></div>
       <div id="stateBar" class="footer-note" style="border-top:0"></div>
-      <div id="tree" class="tree" role="tree" aria-label="JSON tree"></div>
+
+      <div class="tree" id="tree" role="tree" aria-label="JSON tree">
+        <div class="tree-wrap" id="treeWrap"></div>
+      </div>
     </section>
   </div>
 
   <script>
-    // ====== Helpers ======
+    // ===== Helpers =====
     const $ = (q,el=document)=>el.querySelector(q);
     const $$ = (q,el=document)=>Array.from(el.querySelectorAll(q));
     const input = $('#input');
-    const treeEl = $('#tree');
+    const treeWrap = $('#treeWrap');
     const stateBar = $('#stateBar');
     const searchInput = $('#search');
     const searchStatus = $('#searchStatus');
+    const breadcrumb = $('#breadcrumb');
+    const viewerPanel = document.querySelector('.viewer');
 
     let currentJson = null;
-    let expandState = new Set(); // store JSONPath keys of expanded nodes
+    let expandState = new Set(); // JSONPath mở
     let debTimer = null;
+    let selectedNode = null; // DOM .node
 
-    const debounce = (fn, ms=250)=>{return (...args)=>{clearTimeout(debTimer);debTimer=setTimeout(()=>fn.apply(this,args),ms)}};
+    const debounce = (fn, ms=250)=>{let t;return (...args)=>{clearTimeout(t);t=setTimeout(()=>fn.apply(this,args),ms)}};
+    function safeParse(text){ try{ const obj=JSON.parse(text); if (obj&&typeof obj==='object'&&typeof obj.data==='string'){ try{obj.data=JSON.parse(obj.data)}catch{}} return obj;}catch(e){return {__error:e.message}} }
+    const pretty = (o)=>JSON.stringify(o,null,2);
+    const minify = (o)=>JSON.stringify(o);
+    const typeOf = (v)=> v===null?'null':Array.isArray(v)?'array':typeof v;
+    function formatPrimitive(v){ const t=typeOf(v); const span=document.createElement('span'); span.className=`primitive ${t}`; span.textContent=t==='string'?`"${v}"`:String(v); return span; }
+    const escapeHtml = (s)=> String(s).replace(/[&<>\"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));
 
-    function safeParse(text){
-      try{ const obj = JSON.parse(text);
-        // auto parse nested string in .data if possible
-        if (obj && typeof obj === 'object' && typeof obj.data === 'string'){
-          try{ obj.data = JSON.parse(obj.data);}catch{}
-        }
-        return obj;
-      }catch(e){return {__error:e.message}};
-    }
+    // SVG icons
+    const icoFolder = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7h6l2 2h10v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>';
+    const icoArray = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="5" width="6" height="14" rx="2"/><rect x="14" y="5" width="6" height="14" rx="2"/></svg>';
+    const icoFile = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>';
 
-    function pretty(obj){ return JSON.stringify(obj, null, 2); }
-    function minify(obj){ return JSON.stringify(obj); }
-
-    function typeOf(v){
-      if(v===null) return 'null';
-      if(Array.isArray(v)) return 'array';
-      return typeof v; // object,string,number,boolean
-    }
-
-    function formatPrimitive(v){
-      const t = typeOf(v);
-      const span = document.createElement('span');
-      span.className = `primitive ${t}`;
-      if (t==='string') span.textContent = `"${v}"`;
-      else span.textContent = String(v);
-      return span;
-    }
-
-    // ====== Tree Rendering (lazy children) ======
-    function renderTree(root, obj){
-      treeEl.innerHTML = '';
+    // ===== Tree Rendering =====
+    function renderTree(container, obj){
+      treeWrap.innerHTML = '';
       if(obj && obj.__error){
-        treeEl.innerHTML = `<div style="color:var(--danger);padding:8px 10px">Invalid JSON: ${obj.__error}</div>`;
+        treeWrap.innerHTML = `<div style="color:#dc2626;padding:8px 10px">Invalid JSON: ${obj.__error}</div>`;
         stateBar.textContent = '';
+        breadcrumb.textContent = '';
         return;
       }
-
-      const ul = document.createElement('ul');
-      ul.setAttribute('role','group');
-      treeEl.appendChild(ul);
-
-      Object.keys(obj).forEach(key=>{
-        ul.appendChild(makeNode(key, obj[key], `$.${key}`));
-      });
-
+      const ul = document.createElement('ul'); ul.setAttribute('role','group'); treeWrap.appendChild(ul);
+      Object.keys(obj).forEach(k=> ul.appendChild(makeNode(k, obj[k], `$.${k}`)) );
       updateModelState(obj);
+      updateBreadcrumb('$');
     }
 
     function makeNode(key, value, path){
       const li = document.createElement('li');
-      li.className = 'node';
-      li.dataset.path = path;
-
       const t = typeOf(value);
-      if (t==='object' || t==='array'){
-        const caret = document.createElement('span');
-        caret.className = 'caret';
-        caret.title = 'Mở/đóng (click)';
+      const isContainer = (t==='object' || t==='array');
 
-        const label = document.createElement('span');
-        label.className = 'label';
-        const len = t==='array' ? value.length : Object.keys(value).length;
-        label.innerHTML = `<span class="key">${escapeHtml(key)}</span><span class="meta">: ${t==='array'?'[ ]':'{ }'} • ${len} mục</span><span class="type">${t}</span>`;
+      const row = document.createElement('div');
+      row.className = 'node'; row.dataset.path = path; row.dataset.type = t;
 
-        const copyBtn = document.createElement('span');
-        copyBtn.className = 'copy';
-        copyBtn.innerHTML = `<button class="btn" title="Copy JSONPath">Copy path</button>`;
+      // Caret
+      const caret = document.createElement('span'); caret.className='caret'; caret.title='Mở/đóng';
+      // Icon
+      const ico = document.createElement('span'); ico.className='ico'; ico.innerHTML = isContainer ? (t==='array'?icoArray:icoFolder) : icoFile;
 
-        const children = document.createElement('ul');
-        children.className = 'children';
-        children.hidden = !expandState.has(path);
-        if(children.hidden===false) caret.classList.add('open');
+      // Label
+      const label = document.createElement('span'); label.className='label';
+      const len = t==='array' ? value.length : (t==='object'? Object.keys(value).length : 0);
+      const meta = isContainer ? `${t==='array'?'[ ]':'{ }'} • ${len} mục` : '';
+      label.innerHTML = `<span class="key">${escapeHtml(key)}</span>${isContainer?`<span class="meta">: ${meta}</span>`:''}<span class="type">${t}</span>${!isContainer?` : ${formatPrimitive(value).outerHTML}`:''}`;
 
-        // Lazy inject on first expand
-        let injected = false;
-        function injectChildren(){
-          if (injected) return;
-          injected = true;
-          if (t==='array'){
-            value.forEach((v,i)=>{
-              children.appendChild(makeNode(String(i), v, `${path}[${i}]`));
-            });
-          }else{
-            Object.keys(value).forEach(k=>{
-              children.appendChild(makeNode(k, value[k], `${path}.${k}`));
-            });
-          }
-        }
-
-        function toggle(){
-          const open = children.hidden;
-          if (open){
-            injectChildren();
-            children.hidden = false; caret.classList.add('open'); expandState.add(path);
-          }else{
-            children.hidden = true; caret.classList.remove('open'); expandState.delete(path);
-          }
-        }
-
-        caret.addEventListener('click', (e)=>{e.stopPropagation(); toggle();});
-        label.addEventListener('dblclick', (e)=>{e.stopPropagation(); toggle();});
-        label.addEventListener('click', (e)=>{e.stopPropagation(); toggle();}); // large click target
-        copyBtn.querySelector('button').addEventListener('click', (e)=>{e.stopPropagation(); navigator.clipboard.writeText(path)})
-
-        li.appendChild(caret); li.appendChild(label); li.appendChild(copyBtn); li.appendChild(children);
-      }else{
-        const spacer = document.createElement('span'); spacer.style.width='18px'; spacer.style.flex='0 0 18px';
-        const label = document.createElement('span'); label.className = 'label';
-        const keyEl = `<span class="key">${escapeHtml(key)}</span>`;
-        const valEl = formatPrimitive(value).outerHTML;
-        label.innerHTML = `${keyEl}: ${valEl} <span class="type">${typeOf(value)}</span>`;
-        const copyBtn = document.createElement('span'); copyBtn.className='copy'; copyBtn.innerHTML = `<button class="btn" title="Copy value">Copy</button>`;
-        copyBtn.querySelector('button').addEventListener('click', (e)=>{e.stopPropagation(); navigator.clipboard.writeText(String(value))});
-        li.appendChild(spacer); li.appendChild(label); li.appendChild(copyBtn);
+      // Copy buttons
+      const copy = document.createElement('span'); copy.className='copy';
+      const btn1 = document.createElement('button'); btn1.className='btn'; btn1.textContent='Copy path';
+      btn1.addEventListener('click',(e)=>{e.stopPropagation(); navigator.clipboard.writeText(path)});
+      copy.appendChild(btn1);
+      if(!isContainer){
+        const btn2 = document.createElement('button'); btn2.className='btn'; btn2.textContent='Copy';
+        btn2.addEventListener('click',(e)=>{e.stopPropagation(); navigator.clipboard.writeText(String(value))});
+        copy.appendChild(btn2);
       }
+
+      row.appendChild(caret); row.appendChild(ico); row.appendChild(label); row.appendChild(copy);
+      li.appendChild(row);
+
+      if (isContainer){
+        const children = document.createElement('ul'); children.hidden = !expandState.has(path);
+        if(!children.hidden) caret.classList.add('open');
+        let injected = false;
+        function inject(){ if(injected) return; injected=true; if(t==='array'){ value.forEach((v,i)=> children.appendChild(makeNode(String(i), v, `${path}[${i}]`))); } else { Object.keys(value).forEach(k=> children.appendChild(makeNode(k, value[k], `${path}.${k}`))); } }
+        function toggle(){ const open = children.hidden; if(open){ inject(); children.hidden=false; caret.classList.add('open'); expandState.add(path);} else { children.hidden=true; caret.classList.remove('open'); expandState.delete(path);} }
+        caret.addEventListener('click',(e)=>{e.stopPropagation(); toggle(); selectRow(row)});
+        ico.addEventListener('click',(e)=>{e.stopPropagation(); toggle(); selectRow(row)});
+        label.addEventListener('click',(e)=>{e.stopPropagation(); toggle(); selectRow(row)});
+        li.appendChild(children);
+      } else {
+        label.addEventListener('click',()=>selectRow(row));
+      }
+
+      // Make row focusable & selectable
+      row.tabIndex = 0;
+      row.addEventListener('focus', ()=> selectRow(row));
+
       return li;
     }
 
-    function escapeHtml(s){return String(s).replace(/[&<>\"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]))}
+    // ===== Selection, Breadcrumb & Keyboard =====
+    function selectRow(row){ if(selectedNode) selectedNode.classList.remove('selected'); selectedNode=row; row.classList.add('selected'); updateBreadcrumb(row.dataset.path); }
 
-    // ====== ModelState status ======
+    function updateBreadcrumb(path){
+      const parts = [];
+      let p = path || '$';
+      // split $.a.b[0].c to segments
+      const regex = /\$|\.[^\.\[]+|\[[0-9]+\]/g; const segs = p.match(regex)||['$'];
+      let acc = '';
+      segs.forEach((s,i)=>{ acc += (i===0? s : s.startsWith('[')? s : s); const full = acc; parts.push(`<a data-path="${full}">${s}</a>`); });
+      breadcrumb.innerHTML = parts.join('<span class="sep"> › </span>');
+      $$('a', breadcrumb).forEach(a=> a.addEventListener('click',()=> jumpToPath(a.dataset.path)) );
+    }
+
+    function jumpToPath(path){
+      // expand ancestors
+      const ancestors = [];
+      let cur = path; while(cur && cur !== '$'){ ancestors.push(cur); cur = cur.replace(/(\.[^\.\[]+|\[[0-9]+\])$/,'') || '$'; }
+      ancestors.reverse(); ancestors.forEach(p=> expandState.add(p));
+      renderTree(treeWrap, currentJson);
+      const row = $(`.node[data-path="${CSS.escape(path)}"]`, treeWrap);
+      if(row){ row.scrollIntoView({block:'center'}); selectRow(row); }
+    }
+
+    function keyboardNav(e){ if(!selectedNode) return; const row = selectedNode; const li = row.parentElement; if(e.key==='ArrowDown'){ e.preventDefault(); const next = nextRow(li); if(next) { next.querySelector('.node').focus(); } }
+      else if(e.key==='ArrowUp'){ e.preventDefault(); const prev = prevRow(li); if(prev){ prev.querySelector('.node').focus(); } }
+      else if(e.key==='ArrowRight'){ const t=row.dataset.type; if(t==='object'||t==='array'){ const caret=row.querySelector('.caret'); const children=li.querySelector('ul'); if(children && children.hidden){ caret.click(); } else { const firstChild = children?.querySelector('.node'); if(firstChild){ firstChild.focus(); } } } }
+      else if(e.key==='ArrowLeft'){ const children=li.querySelector('ul'); const caret=row.querySelector('.caret'); if(children && !children.hidden){ caret.click(); } else { const parentLi = li.parentElement.closest('li'); if(parentLi){ parentLi.querySelector('.node').focus(); } } }
+    }
+
+    function nextRow(li){ // depth-first next
+      if(li.querySelector('ul') && !li.querySelector('ul').hidden){ const first = li.querySelector('ul > li'); if(first) return first; }
+      let n = li.nextElementSibling; if(n) return n; let parent = li.parentElement.closest('li'); while(parent){ if(parent.nextElementSibling) return parent.nextElementSibling; parent = parent.parentElement.closest('li'); } return null; }
+    function prevRow(li){ let p = li.previousElementSibling; if(!p){ return li.parentElement.closest('li'); } while(p.querySelector('ul') && !p.querySelector('ul').hidden){ const last = Array.from(p.querySelectorAll(':scope > ul > li')).pop(); if(!last) break; p = last; } return p; }
+
+    document.addEventListener('keydown', (e)=>{
+      if(['INPUT','TEXTAREA'].includes(e.target.tagName)) return;
+      if(e.key.toLowerCase()==='a'){ expandCollapseAll(true); }
+      if(e.key.toLowerCase()==='z'){ expandState=new Set(); renderTree(treeWrap, currentJson); }
+      if(['ArrowDown','ArrowUp','ArrowLeft','ArrowRight'].includes(e.key)){ keyboardNav(e); }
+      if(e.key.toLowerCase()==='f'){ searchInput.focus(); }
+    });
+
+    // ===== Status & Controls =====
     function updateModelState(obj){
       let msg = '';
-      const get = (o, p)=> p.split('.').reduce((a,c)=> (a&&a[c]!=null)?a[c]:undefined, o);
       const st = obj && obj.custom_param && obj.custom_param.ModelState;
       if (st){
         const map = { '1':'Thêm','2':'Sửa','3':'Xóa','7':'Ghi sổ','8':'Bỏ ghi sổ' };
         msg = `Trạng thái: <strong>${map[st]||'Không xác định'}</strong> (ModelState = ${st})`;
-      } else {
-        msg = 'Không có ModelState trong custom_param';
-      }
+      } else { msg = 'Không có ModelState trong custom_param'; }
       stateBar.innerHTML = msg;
     }
 
-    // ====== Controls ======
-    function expandCollapseAll(expand=true){
-      if(!currentJson) return;
-      expandState = new Set();
-      if (expand){
-        // open first 3 levels by default
-        const maxLevel = 9; // open all
-        walk(currentJson, '$', 1, (path)=> expandState.add(path));
-      }
-      renderTree(treeEl, currentJson);
-    }
+    function expandCollapseAll(expand=true){ if(!currentJson) return; expandState = new Set(); if(expand){ walk(currentJson,'$',1,(p)=>expandState.add(p)); } renderTree(treeWrap, currentJson); }
+    function openToLevel(n){ expandState=new Set(); walk(currentJson,'$',0,(p,l,v)=>{ if(l<=n && typeof v==='object' && v!==null) expandState.add(p); }); renderTree(treeWrap, currentJson); }
+    function walk(v, path, level, visit){ if(typeof v==='object' && v!==null){ visit(path, level, v); if(Array.isArray(v)){ v.forEach((it,i)=>walk(it, `${path}[${i}]`, level+1, visit)); } else { Object.keys(v).forEach(k=>walk(v[k], `${path}.${k}`, level+1, visit)); } } }
 
-    function openToLevel(n){
-      expandState = new Set();
-      walk(currentJson, '$', 0, (path, level, value)=>{ if(level<=n && (typeof value==='object' && value!==null)) expandState.add(path); });
-      renderTree(treeEl, currentJson);
-    }
+    // Search
+    let searchHits = []; let hitIndex = -1;
+    function doSearch(q){ q=(q||'').trim().toLowerCase(); $$('mark', treeWrap).forEach(m=>{const t=m.textContent; m.replaceWith(document.createTextNode(t));}); searchStatus.textContent=''; searchHits=[]; hitIndex=-1; if(!q) return;
+      // Expand match paths
+      const matchPaths=[];
+      function collect(v, p){ if(typeof v==='object' && v!==null){ if(Array.isArray(v)) v.forEach((it,i)=>collect(it, `${p}[${i}]`)); else Object.entries(v).forEach(([k,val])=>{ if(String(k).toLowerCase().includes(q)) matchPaths.push(p); if(typeof val!=='object'||val===null){ if(String(val).toLowerCase().includes(q)) matchPaths.push(p); } collect(val, `${p}.${k}`); }); } }
+      collect(currentJson,'$'); matchPaths.forEach(p=>expandState.add(p)); renderTree(treeWrap, currentJson);
+      // highlight
+      const walker=document.createTreeWalker(treeWrap, NodeFilter.SHOW_TEXT, null); const re = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'gi');
+      while(walker.nextNode()){ const node=walker.currentNode; if(!node.nodeValue.trim()) continue; if(re.test(node.nodeValue)){ const span=document.createElement('span'); span.innerHTML=node.nodeValue.replace(re,m=>`<mark>${m}</mark>`); node.parentNode.replaceChild(span,node); } }
+      searchHits = $$('.node mark', treeWrap).map(m=>m.closest('.node'));
+      if(searchHits.length){ hitIndex=0; focusHit(); }
+      searchStatus.textContent = searchHits.length? `${searchHits.length} kết quả` : '0 kết quả'; }
+    function focusHit(){ if(hitIndex<0||!searchHits.length) return; const el=searchHits[hitIndex]; el.scrollIntoView({block:'center'}); el.style.outline='2px solid var(--primary)'; setTimeout(()=>{el.style.outline='none'},600); }
 
-    function walk(v, path, level, visit){
-      if (typeof v==='object' && v!==null){
-        visit(path, level, v);
-        if (Array.isArray(v)){
-          v.forEach((item,i)=>walk(item, `${path}[${i}]`, level+1, visit));
-        } else {
-          Object.keys(v).forEach(k=>walk(v[k], `${path}.${k}` , level+1, visit));
-        }
-      }
-    }
-
-    // Search & highlight
-    let searchHits = [];
-    let hitIndex = -1;
-    function doSearch(q){
-      q = (q||'').trim().toLowerCase();
-      $$('mark', treeEl).forEach(m=>{ const t=m.textContent; m.replaceWith(document.createTextNode(t)); });
-      searchStatus.textContent = '';
-      searchHits = []; hitIndex = -1;
-      if (!q){ return; }
-
-      // expand all paths that contain matches
-      const matchPaths = [];
-      function collect(v, path){
-        if (typeof v==='object' && v!==null){
-          if (Array.isArray(v)) v.forEach((item,i)=>collect(item, `${path}[${i}]`));
-          else Object.entries(v).forEach(([k,val])=>{
-            const keyStr = String(k).toLowerCase();
-            if (keyStr.includes(q)) matchPaths.push(path);
-            if (typeof val!=='object' || val===null){
-              const valStr = String(val).toLowerCase();
-              if (valStr.includes(q)) matchPaths.push(path);
-            }
-            collect(val, `${path}.${k}`);
-          });
-        }
-      }
-      collect(currentJson, '$');
-      matchPaths.forEach(p=>expandState.add(p));
-      renderTree(treeEl, currentJson);
-
-      // highlight after render
-      const walker = document.createTreeWalker(treeEl, NodeFilter.SHOW_TEXT, null);
-      const re = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
-      while(walker.nextNode()){
-        const node = walker.currentNode;
-        if (!node.nodeValue.trim()) continue;
-        if (re.test(node.nodeValue)){
-          const span = document.createElement('span');
-          span.innerHTML = node.nodeValue.replace(re, m=>`<mark>${m}</mark>`);
-          node.parentNode.replaceChild(span, node);
-        }
-      }
-      searchHits = $$('.node mark', treeEl).map(m=>m.closest('.node'));
-      if (searchHits.length){ hitIndex = 0; focusHit(); }
-      searchStatus.textContent = searchHits.length? `${searchHits.length} kết quả` : '0 kết quả';
-    }
-
-    function focusHit(){
-      if (hitIndex<0 || !searchHits.length) return;
-      const el = searchHits[hitIndex];
-      el.scrollIntoView({block:'center'});
-      el.style.outline = '2px solid var(--primary)';
-      setTimeout(()=>{el.style.outline='none'}, 600);
-    }
-
-    // ====== Wire up ======
-    $('#btnCopy').addEventListener('click', ()=>{
-      if(!currentJson) return; navigator.clipboard.writeText(pretty(currentJson));
-    });
+    // Wire up buttons
+    $('#btnCopy').addEventListener('click', ()=>{ if(!currentJson) return; navigator.clipboard.writeText(pretty(currentJson)); });
     $('#btnExpandAll').addEventListener('click', ()=> expandCollapseAll(true));
-    $('#btnCollapseAll').addEventListener('click', ()=> {expandState=new Set(); renderTree(treeEl, currentJson)});
+    $('#btnCollapseAll').addEventListener('click', ()=> {expandState=new Set(); renderTree(treeWrap, currentJson)});
     $('#level').addEventListener('change', (e)=> openToLevel(parseInt(e.target.value||2,10)));
+    $('#toggleDense').addEventListener('change',(e)=>{ document.querySelector('.tree').classList.toggle('dense', e.target.checked); });
 
     $('#btnPretty').addEventListener('click', ()=>{ const o=safeParse(input.value); if(!o.__error){ input.value=pretty(o); parseInput(); }});
     $('#btnMinify').addEventListener('click', ()=>{ const o=safeParse(input.value); if(!o.__error){ input.value=minify(o); parseInput(); }});
-
-    $('#btnSample').addEventListener('click', ()=>{
-      const sample = {
-        success:true,
-        custom_param:{ ModelState:"2", RequestId:"abc-123" },
-        data: { order:{ id:101, code:"SO-000101", created:"2025-08-11", total:123456.78, items:[ {sku:"A1", qty:1, price:45678}, {sku:"B2", qty:2, price:38900} ], customer:{ id:9, name:"Nguyen Van A", phones:["0901...","0283..."], address:{ city:"HCMC", ward:"P.5" } } } }
-      };
-      input.value = pretty(sample);
-      parseInput();
-    });
+    $('#btnSample').addEventListener('click', ()=>{ const sample={ success:true, custom_param:{ ModelState:"2", RequestId:"abc-123" }, data:{ order:{ id:101, code:"SO-000101", created:"2025-08-11", total:123456.78, items:[ {sku:"A1", qty:1, price:45678}, {sku:"B2", qty:2, price:38900} ], customer:{ id:9, name:"Nguyen Van A", phones:["0901...","0283..."], address:{ city:"HCMC", ward:"P.5" } } } } }; input.value = pretty(sample); parseInput(); });
 
     input.addEventListener('input', debounce(parseInput, 250));
-
-    function parseInput(){
-      const obj = safeParse(input.value);
-      if (obj.__error){
-        currentJson = null; renderTree(treeEl, obj); return;
-      }
-      currentJson = obj; renderTree(treeEl, currentJson);
-    }
+    function parseInput(){ const obj = safeParse(input.value); if (obj.__error){ currentJson=null; renderTree(treeWrap, obj); return; } currentJson=obj; renderTree(treeWrap, currentJson); }
 
     // Search
     searchInput.addEventListener('input', debounce(()=>doSearch(searchInput.value), 200));
-    searchInput.addEventListener('keydown', (e)=>{
-      if (e.key==='Enter' && searchHits.length){ e.preventDefault(); hitIndex=(hitIndex+1)%searchHits.length; focusHit(); }
-    });
+    searchInput.addEventListener('keydown', (e)=>{ if (e.key==='Enter' && searchHits.length){ e.preventDefault(); hitIndex=(hitIndex+1)%searchHits.length; focusHit(); } });
 
-    // Keyboard shortcuts
-    document.addEventListener('keydown', (e)=>{
-      if (e.target.tagName==='INPUT' || e.target.tagName==='TEXTAREA') return;
-      if (e.key.toLowerCase()==='a'){ expandCollapseAll(true); }
-      if (e.key.toLowerCase()==='z'){ expandState=new Set(); renderTree(treeEl, currentJson); }
-      if (e.key.toLowerCase()==='f'){ searchInput.focus(); }
-    });
-
-    // Initial
-    input.value = '';
+    // Init
     stateBar.textContent = 'Chưa có JSON';
   </script>
 </body>
