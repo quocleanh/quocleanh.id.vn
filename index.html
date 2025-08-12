@@ -3,10 +3,10 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>JSON Viewer Pro – Dạng cây (Tree View) tối ưu</title>
+  <title>JSON Viewer Pro – Qắc Sunday</title>
   <style>
     :root{
-      --bg:#f6f7fb; --card:#fff; --border:#e5e7eb; --text:#0f172a; --muted:#64748b; --primary:#2563eb;
+      --bg:#f6f7fb; --card:#fff; --border:#e5e7eb; --text:#0f172a; --muted:#64748b; --primary:#eb2525;
       --accent:#eef2ff; --hover:#f8fafc; --line:#e2e8f0; --icon:#475569;
       --mono: ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;
     }
@@ -153,6 +153,30 @@
     const typeOf = (v)=> v===null?'null':Array.isArray(v)?'array':typeof v;
     function formatPrimitive(v){ const t=typeOf(v); const span=document.createElement('span'); span.className=`primitive ${t}`; span.textContent=t==='string'?`"${v}"`:String(v); return span; }
     const escapeHtml = (s)=> String(s).replace(/[&<>\"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));
+    
+    // Helper function to get value by JSONPath
+    function getValueByPath(path) {
+      if (!currentJson) return null;
+      if (path === '$') return currentJson;
+      
+      const segments = path.replace(/^\$/, '').match(/\[[0-9]+\]|\.[^\.\[]+/g) || [];
+      let value = currentJson;
+      
+      for (const segment of segments) {
+        if (segment.startsWith('[')) {
+          // Array index
+          const index = parseInt(segment.slice(1, -1));
+          value = value[index];
+        } else {
+          // Object property
+          const key = segment.slice(1);
+          value = value[key];
+        }
+        if (value === undefined) return null;
+      }
+      
+      return value;
+    }
 
     // SVG icons
     const icoFolder = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7h6l2 2h10v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>';
@@ -219,10 +243,82 @@
         if(!children.hidden) row.querySelector('.caret').classList.add('open');
         let injected = false;
         function inject(){ if(injected) return; injected=true; if(t==='array'){ value.forEach((v,i)=> children.appendChild(makeNode(String(i), v, `${path}[${i}]`))); } else { Object.keys(value).forEach(k=> children.appendChild(makeNode(k, value[k], `${path}.${k}`))); } }
-        function toggle(){ const open = children.hidden; if(open){ inject(); children.hidden=false; row.querySelector('.caret').classList.add('open'); expandState.add(path);} else { children.hidden=true; row.querySelector('.caret').classList.remove('open'); expandState.delete(path);} }
-        row.querySelector('.caret').addEventListener('click',(e)=>{e.stopPropagation(); toggle(); selectRow(row)});
-        row.addEventListener('dblclick',(e)=>{ if(e.target.closest('.copy')) return; toggle(); selectRow(row); });
-        label.addEventListener('click',(e)=>{e.stopPropagation(); toggle(); selectRow(row)});
+        let isToggling = false;
+        function toggle(){ 
+          if (isToggling) return; // Chặn click nhanh liên tiếp
+          isToggling = true;
+          const willOpen = children.hidden;
+
+          function smoothToggle(listEl, open){
+            if (open){
+              inject();
+              // Chuẩn bị mở
+              listEl.hidden = false;
+              listEl.style.overflow = 'hidden';
+              listEl.style.height = '0px';
+              // Force reflow
+              listEl.getBoundingClientRect();
+              const target = listEl.scrollHeight;
+              listEl.style.transition = 'height 180ms ease';
+              listEl.style.height = target + 'px';
+              const done = ()=>{
+                listEl.style.transition = '';
+                listEl.style.height = '';
+                listEl.style.overflow = '';
+                listEl.removeEventListener('transitionend', done);
+                isToggling = false;
+              };
+              listEl.addEventListener('transitionend', done);
+            } else {
+              // Chuẩn bị đóng
+              const start = listEl.scrollHeight;
+              listEl.style.overflow = 'hidden';
+              listEl.style.height = start + 'px';
+              // Force reflow
+              listEl.getBoundingClientRect();
+              listEl.style.transition = 'height 180ms ease';
+              listEl.style.height = '0px';
+              const done = ()=>{
+                listEl.hidden = true;
+                listEl.style.transition = '';
+                listEl.style.height = '';
+                listEl.style.overflow = '';
+                listEl.removeEventListener('transitionend', done);
+                isToggling = false;
+              };
+              listEl.addEventListener('transitionend', done);
+            }
+          }
+
+          if (willOpen){
+            row.querySelector('.caret').classList.add('open'); 
+            expandState.add(path);
+            smoothToggle(children, true);
+          } else {
+            row.querySelector('.caret').classList.remove('open'); 
+            expandState.delete(path);
+            smoothToggle(children, false);
+          }
+        }
+        
+        row.querySelector('.caret').addEventListener('click',(e)=>{
+          e.stopPropagation(); 
+          e.preventDefault();
+          toggle(); 
+          selectRow(row);
+        });
+        
+        row.addEventListener('dblclick',(e)=>{ 
+          if(e.target.closest('.copy')) return; 
+          toggle(); 
+          selectRow(row); 
+        });
+        
+        label.addEventListener('click',(e)=>{
+          e.stopPropagation(); 
+          toggle(); 
+          selectRow(row);
+        });
         li.appendChild(children);
       } else {
         label.addEventListener('click',()=>selectRow(row));
@@ -257,10 +353,56 @@
       if(row){ row.scrollIntoView({block:'center'}); selectRow(row); }
     }
 
-    function keyboardNav(e){ if(!selectedNode) return; const row = selectedNode; const li = row.parentElement; if(e.key==='ArrowDown'){ e.preventDefault(); const next = nextRow(li); if(next) { next.querySelector('.node').focus(); } }
-      else if(e.key==='ArrowUp'){ e.preventDefault(); const prev = prevRow(li); if(prev){ prev.querySelector('.node').focus(); } }
-      else if(e.key==='ArrowRight'){ const t=row.dataset.type; if(t==='object'||t==='array'){ const caret=row.querySelector('.caret'); const children=li.querySelector('ul'); if(children && children.hidden){ caret.click(); } else { const firstChild = children?.querySelector('.node'); if(firstChild){ firstChild.focus(); } } } }
-      else if(e.key==='ArrowLeft'){ const children=li.querySelector('ul'); const caret=row.querySelector('.caret'); if(children && !children.hidden){ caret.click(); } else { const parentLi = li.parentElement.closest('li'); if(parentLi){ parentLi.querySelector('.node').focus(); } } }
+    function keyboardNav(e){ 
+      if(!selectedNode) return; 
+      const row = selectedNode; 
+      const li = row.parentElement; 
+      
+      if(e.key==='ArrowDown'){ 
+        e.preventDefault(); 
+        const next = nextRow(li); 
+        if(next) { 
+          next.querySelector('.node').focus(); 
+        } 
+      }
+      else if(e.key==='ArrowUp'){ 
+        e.preventDefault(); 
+        const prev = prevRow(li); 
+        if(prev){ 
+          prev.querySelector('.node').focus(); 
+        } 
+      }
+      else if(e.key==='ArrowRight'){ 
+        e.preventDefault();
+        const t=row.dataset.type; 
+        if(t==='object'||t==='array'){ 
+          const children=li.querySelector('ul'); 
+          if(children && children.hidden){ 
+            // Dùng cùng toggle như khi click caret để đảm bảo animation và state đồng bộ
+            const caret = row.querySelector('.caret');
+            if (caret) caret.click();
+          } else { 
+            const firstChild = children?.querySelector('.node'); 
+            if(firstChild){ 
+              firstChild.focus(); 
+            } 
+          } 
+        } 
+      }
+      else if(e.key==='ArrowLeft'){ 
+        e.preventDefault();
+        const children=li.querySelector('ul'); 
+        if(children && !children.hidden){ 
+          // Dùng cùng toggle như khi click caret để đảm bảo animation và state đồng bộ
+          const caret = row.querySelector('.caret');
+          if (caret) caret.click();
+        } else { 
+          const parentLi = li.parentElement.closest('li'); 
+          if(parentLi){ 
+            parentLi.querySelector('.node').focus(); 
+          } 
+        } 
+      }
     }
 
     function nextRow(li){
