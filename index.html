@@ -460,7 +460,22 @@
     $('#btnSample').addEventListener('click', ()=>{ const sample={ success:true, custom_param:{ ModelState:"2", RequestId:"abc-123" }, data:{ order:{ id:101, code:"SO-000101", created:"2025-08-11", total:123456.78, items:[ {sku:"A1", qty:1, price:45678}, {sku:"B2", qty:2, price:38900} ], customer:{ id:9, name:"Nguyen Van A", phones:["0901...","0283..."], address:{ city:"HCMC", ward:"P.5" } } } } }; input.value = pretty(sample); parseInput(); });
 
     input.addEventListener('input', debounce(parseInput, 250));
-    function parseInput(){ const obj = safeParse(input.value); if (obj.__error){ currentJson=null; renderTree(treeWrap, obj); return; } currentJson=obj; renderTree(treeWrap, currentJson); }
+    function parseInput(){
+      const obj = safeParse(input.value);
+      expandState = new Set();
+      selectedNode = null;
+      searchHits = [];
+      hitIndex = -1;
+      searchInput.value = '';
+      searchStatus.textContent = '';
+      if (obj.__error){
+        currentJson = null;
+        renderTree(treeWrap, obj);
+        return;
+      }
+      currentJson = obj;
+      renderTree(treeWrap, currentJson);
+    }
 
     // Search
     searchInput.addEventListener('input', debounce(()=>doSearch(searchInput.value), 200));
