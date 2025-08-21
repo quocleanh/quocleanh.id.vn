@@ -153,6 +153,17 @@
     const typeOf = (v)=> v===null?'null':Array.isArray(v)?'array':typeof v;
     function formatPrimitive(v){ const t=typeOf(v); const span=document.createElement('span'); span.className=`primitive ${t}`; span.textContent=t==='string'?`"${v}"`:String(v); return span; }
     const escapeHtml = (s)=> String(s).replace(/[&<>\"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));
+
+    // Tạo một hàng ghi chú khi node trống
+    function makeEmptyRow(msg='Không có dữ liệu'){
+      const li=document.createElement('li');
+      const row=document.createElement('div'); row.className='node leaf';
+      const spacer=document.createElement('span'); spacer.className='spacer'; row.appendChild(spacer);
+      const label=document.createElement('span'); label.className='label'; label.innerHTML=`<em>${msg}</em>`;
+      row.appendChild(label);
+      li.appendChild(row);
+      return li;
+    }
     
     // Helper function to get value by JSONPath
     function getValueByPath(path) {
@@ -221,7 +232,7 @@
       // Label
       const label = document.createElement('span'); label.className='label';
       const len = t==='array' ? value.length : (t==='object'? Object.keys(value).length : 0);
-      const meta = isContainer ? `${t==='array'?'[ ]':'{ }'} • ${len} mục` : '';
+      const meta = isContainer ? `${t==='array'?'[ ]':'{ }'} • ${len} mục${len===0?' (trống)':''}` : '';
       label.innerHTML = `<span class="key">${escapeHtml(key)}</span>${isContainer?`<span class="meta">: ${meta}</span>`:''}<span class="type">${t}</span>${!isContainer?` : ${formatPrimitive(value).outerHTML}`:''}`;
 
       // Copy buttons
@@ -242,7 +253,17 @@
         const children = document.createElement('ul'); children.hidden = !expandState.has(path);
         if(!children.hidden) row.querySelector('.caret').classList.add('open');
         let injected = false;
-        function inject(){ if(injected) return; injected=true; if(t==='array'){ value.forEach((v,i)=> children.appendChild(makeNode(String(i), v, `${path}[${i}]`))); } else { Object.keys(value).forEach(k=> children.appendChild(makeNode(k, value[k], `${path}.${k}`))); } }
+        function inject(){
+          if(injected) return; injected=true;
+          if(t==='array'){
+            if(value.length===0){ children.appendChild(makeEmptyRow()); }
+            else{ value.forEach((v,i)=> children.appendChild(makeNode(String(i), v, `${path}[${i}]`))); }
+          } else {
+            const keys=Object.keys(value);
+            if(keys.length===0){ children.appendChild(makeEmptyRow()); }
+            else{ keys.forEach(k=> children.appendChild(makeNode(k, value[k], `${path}.${k}`))); }
+          }
+        }
         let isToggling = false;
         function toggle(){ 
           if (isToggling) return; // Chặn click nhanh liên tiếp
